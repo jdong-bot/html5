@@ -1,0 +1,263 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Cheese Maze - Collect the Cheeses!</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            text-align: center;
+        }
+
+        #gameArea {
+            display: grid;
+            grid-template-columns: repeat(10, 50px);
+            grid-template-rows: repeat(10, 50px);
+            gap: 2px;
+            justify-content: center;
+            margin-top: 20px;
+        }
+
+        .cell {
+            width: 50px;
+            height: 50px;
+            background-color: #eee;
+            border: 1px solid #333;
+        }
+
+        .wall {
+            background-color: black;
+        }
+
+        .player {
+            background-color: brown;
+        }
+
+        .goal {
+            background-color: yellow;
+        }
+
+        .enemy {
+            background-color: red;
+        }
+
+        #message {
+            font-size: 18px;
+            margin-top: 20px;
+        }
+
+        /* Mobile controls */
+        .controls {
+            margin-top: 20px;
+        }
+
+        .control-button {
+            width: 60px;
+            height: 60px;
+            background-color: #ccc;
+            border: 2px solid #333;
+            font-size: 20px;
+            font-weight: bold;
+            margin: 5px;
+        }
+
+        button {
+            padding: 10px 20px;
+            font-size: 16px;
+            margin: 5px;
+        }
+    </style>
+</head>
+<body>
+
+    <h1>Cheese Maze - Collect the Cheeses!!</h1>
+    <p>Steal all of Mike's Cheeses Before Getting Caught!!!</p>
+
+    <!-- Difficulty Selection -->
+    <h2>Select Maze Difficulty</h2>
+    <div>
+        <button onclick="selectMaze('easy')">Easy</button>
+        <button onclick="selectMaze('medium')">Medium</button>
+        <button onclick="selectMaze('hard')">Hard</button>
+    </div>
+
+    <div id="gameArea"></div>
+    <div id="message"></div>
+
+    <!-- Mobile Controls -->
+    <div class="controls">
+        <button class="control-button" onclick="movePlayer('ArrowUp')">↑</button><br>
+        <button class="control-button" onclick="movePlayer('ArrowLeft')">←</button>
+        <button class="control-button" onclick="movePlayer('ArrowDown')">↓</button>
+        <button class="control-button" onclick="movePlayer('ArrowRight')">→</button>
+    </div>
+
+    <script>
+        const mazeSize = 10;
+        let currentMaze;
+        let playerPosition = { x: 0, y: 0 };
+        let enemyPosition = { x: 9, y: 0 };
+        let cheeses = [];
+        let gameOver = false;
+
+        const maze1 = [
+            [0, 1, 1, 0, 0, 0, 1, 1, 0, 0],
+            [0, 0, 1, 0, 1, 0, 0, 0, 0, 1],
+            [1, 0, 0, 0, 1, 0, 1, 1, 0, 1],
+            [1, 1, 1, 0, 0, 0, 0, 0, 0, 0],
+            [0, 0, 0, 0, 1, 1, 1, 0, 1, 0],
+            [0, 1, 1, 0, 0, 0, 0, 0, 0, 0],
+            [0, 1, 0, 0, 1, 1, 0, 1, 1, 0],
+            [0, 0, 0, 1, 0, 0, 0, 0, 0, 0],
+            [1, 1, 0, 0, 0, 1, 1, 0, 1, 0],
+            [0, 0, 0, 1, 0, 0, 1, 0, 0, 0]
+        ];
+
+        const maze2 = [
+            [0, 1, 1, 1, 0, 0, 0, 1, 0, 1],
+            [0, 0, 1, 0, 0, 1, 0, 1, 0, 0],
+            [1, 0, 0, 0, 1, 0, 0, 0, 0, 1],
+            [1, 1, 1, 0, 0, 0, 1, 1, 1, 1],
+            [0, 0, 0, 0, 1, 1, 1, 0, 1, 0],
+            [0, 1, 0, 0, 0, 0, 0, 0, 1, 0],
+            [0, 1, 1, 1, 0, 1, 1, 1, 1, 0],
+            [0, 0, 0, 1, 0, 0, 0, 1, 0, 0],
+            [1, 1, 0, 0, 0, 0, 0, 0, 0, 1],
+            [0, 0, 1, 1, 1, 0, 1, 1, 0, 0]
+        ];
+
+const maze3 = [
+    [0, 1, 0, 1, 0, 1, 0, 1, 0, 1],
+    [0, 0, 0, 1, 0, 0, 0, 1, 0, 0],
+    [1, 0, 0, 0, 0, 1, 0, 0, 0, 0],
+    [1, 1, 1, 0, 0, 0, 1, 1, 0, 1],
+    [0, 0, 0, 0, 1, 0, 0, 0, 0, 0],
+    [0, 1, 1, 1, 0, 1, 1, 1, 1, 0],
+    [0, 1, 0, 0, 0, 1, 0, 0, 0, 0],
+    [0, 0, 0, 1, 0, 0, 0, 1, 1, 1],
+    [1, 1, 0, 1, 0, 1, 0, 1, 0, 0],
+    [0, 0, 0, 0, 0, 0, 0, 0, 0, 0]
+];
+
+
+  
+
+        const gameArea = document.getElementById('gameArea');
+        const messageElement = document.getElementById('message');
+
+        // Start with an easy maze on load
+        window.onload = function() {
+            selectMaze('easy');
+        };
+
+        function selectMaze(difficulty) {
+            if (difficulty === 'easy') currentMaze = maze1;
+            else if (difficulty === 'medium') currentMaze = maze2;
+            else if (difficulty === 'hard') currentMaze = maze3;
+
+            resetGame();
+        }
+
+        function resetGame() {
+            playerPosition = { x: 0, y: 0 };
+            enemyPosition = { x: 9, y: 0 };
+            cheeses = [];
+            gameOver = false;
+            generateCheeses();
+            createMaze();
+        }
+
+        function generateCheeses() {
+            cheeses = [];
+            for (let i = 0; i < 5; i++) {
+                let cheeseX, cheeseY;
+                do {
+                    cheeseX = Math.floor(Math.random() * mazeSize);
+                    cheeseY = Math.floor(Math.random() * mazeSize);
+                } while (currentMaze[cheeseY][cheeseX] === 1 || (cheeseX === 0 && cheeseY === 0) || (cheeseX === 9 && cheeseY === 9)); // Avoid walls, player start, and enemy position
+                cheeses.push({ x: cheeseX, y: cheeseY });
+            }
+        }
+        
+                function createMaze() {
+            gameArea.innerHTML = '';
+            currentMaze.forEach((row, y) => {
+                row.forEach((cell, x) => {
+                    const div = document.createElement('div');
+                    div.classList.add('cell');
+                    if (cell === 1) div.classList.add('wall');
+                    if (x === playerPosition.x && y === playerPosition.y) div.classList.add('player');
+                    if (x === enemyPosition.x && y === enemyPosition.y) div.classList.add('enemy');
+                    cheeses.forEach(cheese => {
+                        if (x === cheese.x && y === cheese.y) div.classList.add('goal');
+                    });
+                    gameArea.appendChild(div);
+                });
+            });
+        }
+
+        function movePlayer(direction) {
+            if (gameOver) return;
+            const { x, y } = playerPosition;
+            let newX = x, newY = y;
+
+            if (direction === 'ArrowUp' && y > 0) newY--;
+            if (direction === 'ArrowDown' && y < mazeSize - 1) newY++;
+            if (direction === 'ArrowLeft' && x > 0) newX--;
+            if (direction === 'ArrowRight' && x < mazeSize - 1) newX++;
+
+            if (currentMaze[newY][newX] === 0) {
+                playerPosition = { x: newX, y: newY };
+            }
+
+            collectCheese();
+            checkGameOver();
+            createMaze();
+        }
+
+        function collectCheese() {
+            cheeses = cheeses.filter(cheese => cheese.x !== playerPosition.x || cheese.y !== playerPosition.y);
+            if (cheeses.length === 0) {
+                messageElement.innerText = "You collected all the cheeses! You win!";
+                gameOver = true;
+            }
+        }
+
+        function moveEnemy() {
+            if (gameOver) return;
+
+            const { x: px, y: py } = playerPosition;
+            let { x: ex, y: ey } = enemyPosition;
+
+            if (px > ex && currentMaze[ey][ex + 1] === 0) ex++;
+            else if (px < ex && currentMaze[ey][ex - 1] === 0) ex--;
+            else if (py > ey && currentMaze[ey + 1][ex] === 0) ey++;
+            else if (py < ey && currentMaze[ey - 1][ex] === 0) ey--;
+
+            enemyPosition = { x: ex, y: ey };
+
+            checkGameOver();
+            createMaze();
+        }
+
+        function checkGameOver() {
+            if (playerPosition.x === enemyPosition.x && playerPosition.y === enemyPosition.y) {
+                messageElement.innerText = "The enemy caught you! Game over!";
+                gameOver = true;
+            }
+        }
+
+        document.addEventListener('keydown', (e) => movePlayer(e.key));
+
+        // Move enemy every 1 second
+        setInterval(moveEnemy, 1000);
+
+        // Initial maze setup
+        window.onload = function() {
+            selectMaze('easy');
+        };
+    </script>
+
+</body>
+</html>
