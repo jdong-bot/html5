@@ -1,84 +1,211 @@
 <!DOCTYPE html>
-<html>
+<html lang="en">
 <head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Cheese Catcher Game</title>
     <style>
         body {
+            font-family: Arial, sans-serif;
             text-align: center;
+            background-color: #f0f0f0;
         }
-        #gameArea {
-            width: 500px;
-            height: 600px;
-            background-color: lightblue;
-            position: relative;
-            margin: 0 auto;
-            overflow: hidden;
+
+        #gameCanvas {
+            border: 2px solid #000;
+            background-color: #b5e7a0;
         }
-        #basket {
-            width: 100px;
-            height: 50px;
-            background-color: brown;
-            position: absolute;
-            bottom: 0;
-            left: 200px;
+
+        #score, #time {
+            font-size: 24px;
+            margin-top: 10px;
         }
-        .cheese {
-            width: 30px;
-            height: 30px;
-            background-color: yellow;
-            border-radius: 50%;
-            position: absolute;
-            top: 0;
+
+        #leaderboard {
+            margin-top: 20px;
+            text-align: left;
+            display: inline-block;
+        }
+
+        .leaderboard-entry {
+            font-size: 18px;
+        }
+
+        /* Mobile-friendly controls */
+        #controls {
+            margin-top: 20px;
+        }
+
+        .control-button {
+            padding: 10px;
+            font-size: 20px;
+            margin: 5px;
+            border: 2px solid #333;
+            background-color: #ffeb3b;
+            cursor: pointer;
         }
     </style>
 </head>
 <body>
 
-    <h1>Cheese Catcher Game</h1>
-    <div id="gameArea">
-        <div id="basket"></div>
+    <h1>Cheese Catcher - 60 Second Challenge</h1>
+    <p id="instructions">
+        Catch as many cheeses as you can in 60 seconds!<br>
+        <b>Yellow (Cheddar)</b> = 10 points, <b>White (Brie)</b> = 20 points, <b>Blue (Blue Cheese)</b> = 30 points.
+    </p>
+
+    <canvas id="gameCanvas" width="400" height="600"></canvas>
+    <p id="score">Score: 0</p>
+    <p id="time">Time Left: 60s</p>
+
+    <!-- Mobile-friendly Controls -->
+    <div id="controls">
+        <button class="control-button" onclick="moveLeft()">Left</button>
+        <button class="control-button" onclick="moveRight()">Right</button>
+    </div>
+
+    <div id="leaderboard">
+        <h2>Leaderboard</h2>
+        <div id="leaderboardEntries"></div>
     </div>
 
     <script>
-        const basket = document.getElementById('basket');
-        let basketPosition = 200;
+        const canvas = document.getElementById('gameCanvas');
+        const ctx = canvas.getContext('2d');
 
-        // Move basket left or right
-        document.addEventListener('keydown', (e) => {
-            if (e.key === 'ArrowLeft' && basketPosition > 0) {
-                basketPosition -= 20;
-            } else if (e.key === 'ArrowRight' && basketPosition < 400) {
-                basketPosition += 20;
-            }
-            basket.style.left = basketPosition + 'px';
-        });
+        let player = { x: 180, y: 550, width: 40, height: 40, speed: 5 };
+        let cheeses = [];
+        let score = 0;
+        let timeLeft = 60; // Time left in seconds
+        let gameInterval, timerInterval;
+        let leaderboard = [];
 
-        // Create cheese and make it fall
-        function createCheese() {
-            const cheese = document.createElement('div');
-            cheese.classList.add('cheese');
-            cheese.style.left = Math.floor(Math.random() * 470) + 'px';
-            document.getElementById('gameArea').appendChild(cheese);
-
-            let cheesePosition = 0;
-            const fallInterval = setInterval(() => {
-                if (cheesePosition > 570 && Math.abs(basketPosition - parseInt(cheese.style.left)) < 100) {
-                    alert('Cheese caught!');
-                    clearInterval(fallInterval);
-                    cheese.remove();
-                } else if (cheesePosition > 600) {
-                    alert('Cheese missed!');
-                    clearInterval(fallInterval);
-                    cheese.remove();
-                } else {
-                    cheesePosition += 5;
-                    cheese.style.top = cheesePosition + 'px';
-                }
-            }, 50);
+        // Start the game and timer
+        function startGame() {
+            gameInterval = setInterval(updateGame, 20);
+            timerInterval = setInterval(updateTimer, 1000); // Update timer every second
+            spawnCheese();
         }
 
-        // Create cheese every 2 seconds
-        setInterval(createCheese, 2000);
+        // Timer update function
+        function updateTimer() {
+            if (timeLeft > 0) {
+                timeLeft--;
+                document.getElementById('time').innerText = `Time Left: ${timeLeft}s`;
+            } else {
+                endGame();
+            }
+        }
+
+        // End the game when time runs out
+        function endGame() {
+            clearInterval(gameInterval);
+            clearInterval(timerInterval);
+            document.getElementById('time').innerText = "Time's up!";
+            saveScore();
+            displayLeaderboard();
+        }
+
+        // Save the current score to the leaderboard
+        function saveScore() {
+            const playerName = prompt("Enter your name:", "Player");
+            leaderboard.push({ name: playerName, score });
+            leaderboard.sort((a, b) => b.score - a.score); // Sort by score descending
+        }
+
+        // Display the leaderboard on the page
+        function displayLeaderboard() {
+            const leaderboardEntries = document.getElementById('leaderboardEntries');
+            leaderboardEntries.innerHTML = "";
+            leaderboard.forEach((entry, index) => {
+                const entryDiv = document.createElement('div');
+                entryDiv.classList.add('leaderboard-entry');
+                entryDiv.innerText = `${index + 1}. ${entry.name} - ${entry.score} points`;
+                leaderboardEntries.appendChild(entryDiv);
+            });
+        }
+
+        // Spawn a new cheese randomly
+        function spawnCheese() {
+            const cheeseTypes = ['cheddar', 'brie', 'blue'];
+            const cheeseType = cheeseTypes[Math.floor(Math.random() * cheeseTypes.length)];
+
+            cheeses.push({
+                x: Math.random() * 360,
+                y: 0,
+                width: 40,
+                height: 40,
+                type: cheeseType,
+                speed: 2 + Math.random() * 2 // Cheese falls at different speeds
+            });
+
+            if (timeLeft > 0) {
+                setTimeout(spawnCheese, Math.random() * 2000);
+            }
+        }
+
+        // Move player left
+        function moveLeft() {
+            if (player.x > 0) player.x -= player.speed;
+        }
+
+        // Move player right
+        function moveRight() {
+            if (player.x < 360) player.x += player.speed;
+        }
+
+        // Draw the player
+        function drawPlayer() {
+            ctx.fillStyle = '#ffa500';
+            ctx.fillRect(player.x, player.y, player.width, player.height);
+        }
+
+        // Draw the cheeses and check if player catches them
+        function drawCheeses() {
+            cheeses.forEach(cheese => {
+                ctx.fillStyle = cheese.type === 'cheddar' ? 'yellow' : (cheese.type === 'brie' ? 'white' : 'blue');
+                ctx.fillRect(cheese.x, cheese.y, cheese.width, cheese.height);
+                cheese.y += cheese.speed;
+
+                // Remove cheese if it falls to the bottom
+                if (cheese.y > canvas.height) {
+                    cheeses = cheeses.filter(c => c !== cheese);
+                }
+
+                // Check if player catches the cheese
+                if (
+                    cheese.x < player.x + player.width &&
+                    cheese.x + cheese.width > player.x &&
+                    cheese.y < player.y + player.height &&
+                    cheese.y + cheese.height > player.y
+                ) {
+                    cheeses = cheeses.filter(c => c !== cheese); // Remove caught cheese
+                    score += (cheese.type === 'cheddar' ? 10 : (cheese.type === 'brie' ? 20 : 30)); // Add points
+                    updateScore();
+                }
+            });
+        }
+
+        // Update the score display
+        function updateScore() {
+            document.getElementById('score').innerText = `Score: ${score}`;
+        }
+
+        // Main game loop
+        function updateGame() {
+            ctx.clearRect(0, 0, canvas.width, canvas.height);
+            drawPlayer();
+            drawCheeses();
+        }
+
+        // Add keyboard controls (arrow keys)
+        document.addEventListener('keydown', (e) => {
+            if (e.key === 'ArrowLeft') moveLeft();
+            if (e.key === 'ArrowRight') moveRight();
+        });
+
+        // Start the game
+        startGame();
     </script>
 
 </body>
