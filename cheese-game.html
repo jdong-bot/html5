@@ -1,0 +1,85 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Cheese Catcher Game</title>
+    <style>
+        body {
+            text-align: center;
+        }
+        #gameArea {
+            width: 500px;
+            height: 600px;
+            background-color: lightblue;
+            position: relative;
+            margin: 0 auto;
+            overflow: hidden;
+        }
+        #basket {
+            width: 100px;
+            height: 50px;
+            background-color: brown;
+            position: absolute;
+            bottom: 0;
+            left: 200px;
+        }
+        .cheese {
+            width: 30px;
+            height: 30px;
+            background-color: yellow;
+            border-radius: 50%;
+            position: absolute;
+            top: 0;
+        }
+    </style>
+</head>
+<body>
+
+    <h1>Cheese Catcher Game</h1>
+    <div id="gameArea">
+        <div id="basket"></div>
+    </div>
+
+    <script>
+        const basket = document.getElementById('basket');
+        let basketPosition = 200;
+
+        // Move basket left or right
+        document.addEventListener('keydown', (e) => {
+            if (e.key === 'ArrowLeft' && basketPosition > 0) {
+                basketPosition -= 20;
+            } else if (e.key === 'ArrowRight' && basketPosition < 400) {
+                basketPosition += 20;
+            }
+            basket.style.left = basketPosition + 'px';
+        });
+
+        // Create cheese and make it fall
+        function createCheese() {
+            const cheese = document.createElement('div');
+            cheese.classList.add('cheese');
+            cheese.style.left = Math.floor(Math.random() * 470) + 'px';
+            document.getElementById('gameArea').appendChild(cheese);
+
+            let cheesePosition = 0;
+            const fallInterval = setInterval(() => {
+                if (cheesePosition > 570 && Math.abs(basketPosition - parseInt(cheese.style.left)) < 100) {
+                    alert('Cheese caught!');
+                    clearInterval(fallInterval);
+                    cheese.remove();
+                } else if (cheesePosition > 600) {
+                    alert('Cheese missed!');
+                    clearInterval(fallInterval);
+                    cheese.remove();
+                } else {
+                    cheesePosition += 5;
+                    cheese.style.top = cheesePosition + 'px';
+                }
+            }, 50);
+        }
+
+        // Create cheese every 2 seconds
+        setInterval(createCheese, 2000);
+    </script>
+
+</body>
+</html>
