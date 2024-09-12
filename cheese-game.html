@@ -51,6 +51,16 @@
             user-select: none; /* Prevent text selection */
             -webkit-tap-highlight-color: transparent; /* Remove highlight on mobile */
         }
+
+        #resetButton {
+            margin-top: 20px;
+            font-size: 20px;
+            padding: 10px;
+            background-color: #ff5722;
+            color: white;
+            border: none;
+            cursor: pointer;
+        }
     </style>
 </head>
 <body>
@@ -72,6 +82,8 @@
         <button class="control-button" id="rightButton">Right</button>
     </div>
 
+    <button id="resetButton">Reset Game</button>
+
     <div id="leaderboard">
         <h2>Leaderboard</h2>
         <div id="leaderboardEntries"></div>
@@ -80,7 +92,7 @@
     <script type="module">
       // Import Firebase
       import { initializeApp } from "https://www.gstatic.com/firebasejs/10.13.1/firebase-app.js";
-      import { getDatabase, ref, set, get, onValue, push } from "https://www.gstatic.com/firebasejs/10.13.1/firebase-database.js";
+      import { getDatabase, ref, set, get, onValue, push, remove } from "https://www.gstatic.com/firebasejs/10.13.1/firebase-database.js";
 
       // Firebase configuration
       const firebaseConfig = {
@@ -97,10 +109,14 @@
       const app = initializeApp(firebaseConfig);
       const database = getDatabase(app);
 
-      // Save score to Firebase
+      // Save score to Firebase with max character limit
       function saveScore(playerName, score) {
         const leaderboardRef = ref(database, 'leaderboard');
         const newScoreKey = push(leaderboardRef).key;
+        // Prevent names longer than 30 characters
+        if (playerName.length > 30) {
+            playerName = playerName.slice(0, 30);
+        }
         set(ref(database, `leaderboard/${newScoreKey}`), {
           name: playerName,
           score: score
@@ -122,6 +138,15 @@
               leaderboardEntries.appendChild(entryDiv);
             });
           }
+        });
+      }
+
+      // Function to reset leaderboard
+      function resetLeaderboard() {
+        const leaderboardRef = ref(database, 'leaderboard');
+        remove(leaderboardRef).then(() => {
+          alert("Leaderboard has been reset.");
+          displayLeaderboard();  // Refresh leaderboard
         });
       }
 
@@ -166,7 +191,23 @@
           saveScore(playerName, score);
       }
 
-      // Spawn a new cheese randomly
+      // Reset game without refreshing
+      function resetGame() {
+        clearInterval(gameInterval);
+        clearInterval(timerInterval);
+        score = 0;
+        timeLeft = 60;
+        cheeses = [];
+        player.x = 180;
+        document.getElementById('score').innerText = `Score: ${score}`;
+        document.getElementById('time').innerText = `Time Left: ${timeLeft}s`;
+        startGame();
+      }
+
+      // Add reset button functionality
+      document.getElementById("resetButton").addEventListener("click", resetGame);
+
+      // Spawn a new cheese randomly with slightly increased spawn rate
       function spawnCheese() {
           const cheeseTypes = ['cheddar', 'brie', 'blue', 'bomb', 'mystery', 'ultra'];
           let cheeseType;
@@ -190,136 +231,145 @@
               height: cheeseType === 'mystery' ? 30 : 40,
               type: cheeseType,
               speed: 2 + Math.random() * 2,  // Cheese falls at different speeds
-              directionX: Math.random() < 0.5 ? -1 : 1,  // Horizontal direction for the bomb cheese
-              directionY: 1, // Vertical direction for all cheese
+              directionX: Math.random() < 0.5 ? -1 : 1,  // Horizontal direction for bomb cheese
+              directionY: 1, // Vertical direction for all cheeses
           };
 
           cheeses.push(newCheese);
 
           if (timeLeft > 0) {
-              setTimeout(spawnCheese, Math.random() * 2000);
+              // Increased spawn rate, reduced max interval between cheeses to 1.5s (from 2s)
+              setTimeout(spawnCheese, Math.random() * 1800);
           }
       }
 
-      // Move player left
+      // Move player left, prevent sticking at the edges
       function moveLeft() {
-          if (player.x > 0) player.x -= movementSpeed;
+          if (player.x > 0) {
+              player.x -= movementSpeed;
+          } else {
+              player.x = 0; // Ensure the player doesn't get stuck at the left edge
+          }
       }
 
-      // Move player right
+      // Move player right, prevent sticking at the edges
       function moveRight() {
-          if (player.x < 360) player.x += movementSpeed;
+          if (player.x + player.width < canvas.width) {
+              player.x += movementSpeed;
+          } else {
+              player.x = canvas.width - player.width; // Ensure the player doesn't get stuck at the right edge
+          }
       }
 
       // Add touch-based continuous movement for mobile controls
-document.getElementById("leftButton").addEventListener("touchstart", () => {
-    moveLeftInterval = setInterval(moveLeft, 20);
-});
+      document.getElementById("leftButton").addEventListener("touchstart", () => {
+          moveLeftInterval = setInterval(moveLeft, 20);
+      });
 
-document.getElementById("leftButton").addEventListener("touchend", () => {
-    clearInterval(moveLeftInterval);
-});
+      document.getElementById("leftButton").addEventListener("touchend", () => {
+          clearInterval(moveLeftInterval);
+      });
 
-document.getElementById("rightButton").addEventListener("touchstart", () => {
-    moveRightInterval = setInterval(moveRight, 20);
-});
+      document.getElementById("rightButton").addEventListener("touchstart", () => {
+          moveRightInterval = setInterval(moveRight, 20);
+      });
 
-document.getElementById("rightButton").addEventListener("touchend", () => {
-    clearInterval(moveRightInterval);
-});
+      document.getElementById("rightButton").addEventListener("touchend", () => {
+          clearInterval(moveRightInterval);
+      });
 
-// Draw the player
-function drawPlayer() {
-    ctx.fillStyle = '#ffa500';
-    ctx.fillRect(player.x, player.y, player.width, player.height);
-}
+      // Draw the player
+      function drawPlayer() {
+          ctx.fillStyle = '#ffa500';
+          ctx.fillRect(player.x, player.y, player.width, player.height);
+      }
 
-// Update cheese logic, including bouncing bomb cheese
-function drawCheeses() {
-    cheeses.forEach(cheese => {
-        if (cheese.type === 'cheddar') {
-            ctx.fillStyle = 'yellow';
-        } else if (cheese.type === 'brie') {
-            ctx.fillStyle = 'white';
-        } else if (cheese.type === 'blue') {
-            ctx.fillStyle = 'blue';
-        } else if (cheese.type === 'bomb') {
-            ctx.fillStyle = 'red';  // Bomb cheese
-            cheese.x += cheese.directionX * 1.5;  // Add horizontal movement for bomb cheese
-            // Make bomb cheese bounce when it hits the edges
-            if (cheese.x <= 0 || cheese.x + cheese.width >= canvas.width) {
-                cheese.directionX *= -1;  // Reverse direction when it hits left/right bounds
-            }
-        } else if (cheese.type === 'mystery') {
-            ctx.fillStyle = 'purple';  // Mystery cheese
-        } else if (cheese.type === 'ultra') {
-            ctx.fillStyle = 'gold';  // Ultra rare cheese
-        }
+      // Update cheese logic, including bouncing bomb cheese
+      function drawCheeses() {
+          cheeses.forEach(cheese => {
+              if (cheese.type === 'cheddar') {
+                  ctx.fillStyle = 'yellow';
+              } else if (cheese.type === 'brie') {
+                  ctx.fillStyle = 'white';
+              } else if (cheese.type === 'blue') {
+                  ctx.fillStyle = 'blue';
+              } else if (cheese.type === 'bomb') {
+                  ctx.fillStyle = 'red';  // Bomb cheese
+                  cheese.x += cheese.directionX * 1.5;  // Add horizontal movement for bomb cheese
+                  if (cheese.x <= 0 || cheese.x + cheese.width >= canvas.width) {
+                      cheese.directionX *= -1;  // Reverse direction when it hits left/right bounds
+                  }
+              } else if (cheese.type === 'mystery') {
+                  ctx.fillStyle = 'purple';  // Mystery cheese
+              } else if (cheese.type === 'ultra') {
+                  ctx.fillStyle = 'gold';  // Ultra rare cheese
+              }
 
-        ctx.fillRect(cheese.x, cheese.y, cheese.width, cheese.height);
-        cheese.y += cheese.speed;
+              ctx.fillRect(cheese.x, cheese.y, cheese.width, cheese.height);
+              cheese.y += cheese.speed;
 
-        // Remove cheese if it falls to the bottom
-        if (cheese.y > canvas.height) {
-            cheeses = cheeses.filter(c => c !== cheese);
-        }
+              // Remove cheese if it falls to the bottom
+              if (cheese.y > canvas.height) {
+                  cheeses = cheeses.filter(c => c !== cheese);
+              }
 
-        // Check if player catches the cheese
-        if (
-            cheese.x < player.x + player.width &&
-            cheese.x + cheese.width > player.x &&
-            cheese.y < player.y + player.height &&
-            cheese.y + cheese.height > player.y
-        ) {
-            // Player catches the cheese
-            if (cheese.type === 'bomb') {
-                score -= 50;  // Deduct points for bomb cheese
-            } else if (cheese.type === 'mystery') {
-                score += Math.floor(Math.random() * 81) - 20;  // Random points between -20 and 60
-            } else if (cheese.type === 'ultra') {
-                score += 150;  // Add 150 points for ultra rare cheese
-            } else {
-                score += (cheese.type === 'cheddar' ? 10 : (cheese.type === 'brie' ? 20 : 30));  // Add points for regular cheeses
-            }
+              // Check if player catches the cheese
+              if (
+                  cheese.x < player.x + player.width &&
+                  cheese.x + cheese.width > player.x &&
+                  cheese.y < player.y + player.height &&
+                  cheese.y + cheese.height > player.y
+              ) {
+                  // Player catches the cheese
+                  if (cheese.type === 'bomb') {
+                      score -= 50;  // Deduct points for bomb cheese
+                  } else if (cheese.type === 'mystery') {
+                      score += Math.floor(Math.random() * 81) - 20;  // Random points between -20 and 60
+                  } else if (cheese.type === 'ultra') {
+                      score += 150;  // Add 150 points for ultra rare cheese
+                  } else {
+                      score += (cheese.type === 'cheddar' ? 10 : (cheese.type === 'brie' ? 20 : 30));  // Add points for regular cheeses
+                  }
 
-            cheeses = cheeses.filter(c => c !== cheese);  // Remove caught cheese
-            updateScore();
-        }
-    });
-}
+                  cheeses = cheeses.filter(c => c !== cheese);  // Remove caught cheese
+                  updateScore();
+              }
+          });
+      }
 
-// Update the score display
-function updateScore() {
-    document.getElementById('score').innerText = `Score: ${score}`;
-}
+      // Update the score display
+      function updateScore() {
+          document.getElementById('score').innerText = `Score: ${score}`;
+      }
 
-// Main game loop
-function updateGame() {
-    ctx.clearRect(0, 0, canvas.width, canvas.height);  // Clear the canvas
-    drawPlayer();  // Draw the player
-    drawCheeses();  // Draw the cheeses
-}
+      // Main game loop
+      function updateGame() {
+          ctx.clearRect(0, 0, canvas.width, canvas.height);  // Clear the canvas
+          drawPlayer();  // Draw the player
+          drawCheeses();  // Draw the cheeses
+      }
 
-// Add keyboard controls (arrow keys)
-document.addEventListener('keydown', (e) => {
-    if (e.key === 'ArrowLeft') moveLeft();
-    if (e.key === 'ArrowRight') moveRight();
-});
+      // Add keyboard controls (arrow keys)
+      document.addEventListener('keydown', (e) => {
+          if (e.key === 'ArrowLeft') moveLeft();
+          if (e.key === 'ArrowRight') moveRight();
+      });
 
-// Disable double-tap zoom on mobile
-let lastTouchEnd = 0;
-document.addEventListener('touchend', function(event) {
-    const now = (new Date()).getTime();
-    if (now - lastTouchEnd <= 300) {
-        event.preventDefault();
-    }
-    lastTouchEnd = now;
-}, false);
+      // Disable double-tap zoom on mobile
+      let lastTouchEnd = 0;
+      document.addEventListener('touchend', function(event) {
+          const now = (new Date()).getTime();
+          if (now - lastTouchEnd <= 300) {
+              event.preventDefault();
+          }
+          lastTouchEnd = now;
+      }, false);
 
-// Start the game and leaderboard fetching
-startGame();
-displayLeaderboard();
-</script>
+      // Start the game and leaderboard fetching
+      startGame();
+      displayLeaderboard();
+    </script>
 
 </body>
 </html>
+
