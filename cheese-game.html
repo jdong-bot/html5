@@ -2,7 +2,7 @@
 <html lang="en">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no"> <!-- Prevent Zooming -->
     <title>Cheese Catcher Game</title>
     <style>
         body {
@@ -34,6 +34,7 @@
         /* Mobile-friendly controls */
         #controls {
             margin-top: 20px;
+            user-select: none; /* Prevent highlighting on mobile */
         }
 
         .control-button {
@@ -43,6 +44,8 @@
             border: 2px solid #333;
             background-color: #ffeb3b;
             cursor: pointer;
+            user-select: none; /* Prevent text selection */
+            -webkit-tap-highlight-color: transparent; /* Remove highlight on mobile */
         }
     </style>
 </head>
@@ -51,7 +54,8 @@
     <h1>Cheese Catcher - 60 Second Challenge</h1>
     <p id="instructions">
         Catch as many cheeses as you can in 60 seconds!<br>
-        <b>Yellow (Cheddar)</b> = 10 points, <b>White (Brie)</b> = 20 points, <b>Blue (Blue Cheese)</b> = 30 points.
+        <b>Yellow (Cheddar)</b> = 10 points, <b>White (Brie)</b> = 20 points, <b>Blue (Blue Cheese)</b> = 30 points.<br>
+        <b>Red (Bomb)</b> = -50 points, <b>Purple (Mystery Cheese)</b> = -20 to 60 points, <b>Golden Cheese</b> = 150 points (Ultra Rare!).
     </p>
 
     <canvas id="gameCanvas" width="400" height="600"></canvas>
@@ -129,6 +133,9 @@
       let leaderboard = [];
       let moveLeftInterval, moveRightInterval;
 
+      // Normalize speed across devices
+      const movementSpeed = 5; 
+
       // Start the game and timer
       function startGame() {
           gameInterval = setInterval(updateGame, 20);
@@ -157,17 +164,32 @@
 
       // Spawn a new cheese randomly
       function spawnCheese() {
-          const cheeseTypes = ['cheddar', 'brie', 'blue'];
-          const cheeseType = cheeseTypes[Math.floor(Math.random() * cheeseTypes.length)];
+          const cheeseTypes = ['cheddar', 'brie', 'blue', 'bomb', 'mystery', 'ultra'];
+          let cheeseType;
+          const randomValue = Math.random();
 
-          cheeses.push({
+          // Normal cheese is common (80%), bomb and mystery (10% each), ultra rare cheese (<1%)
+          if (randomValue < 0.8) {
+              cheeseType = cheeseTypes[Math.floor(Math.random() * 3)];  // cheddar, brie, blue
+          } else if (randomValue < 0.9) {
+              cheeseType = 'bomb';  // bomb cheese
+          } else if (randomValue < 0.99) {
+              cheeseType = 'mystery';  // mystery cheese
+          } else {
+              cheeseType = 'ultra';  // ultra rare cheese
+          }
+
+          const newCheese = {
               x: Math.random() * 360,
               y: 0,
-              width: 40,
-              height: 40,
+              width: cheeseType === 'mystery' ? 30 : 40, // Mystery cheese is smaller
+              height: cheeseType === 'mystery' ? 30 : 40,
               type: cheeseType,
-              speed: 2 + Math.random() * 2 // Cheese falls at different speeds
-          });
+              speed: 2 + Math.random() * 2,  // Cheese falls at different speeds
+              direction: Math.random() < 0.5 ? -1 : 1  // Used for bomb cheese's curve direction
+          };
+
+          cheeses.push(newCheese);
 
           if (timeLeft > 0) {
               setTimeout(spawnCheese, Math.random() * 2000);
@@ -176,12 +198,12 @@
 
       // Move player left
       function moveLeft() {
-          if (player.x > 0) player.x -= player.speed;
+          if (player.x > 0) player.x -= movementSpeed;
       }
 
       // Move player right
       function moveRight() {
-          if (player.x < 360) player.x += player.speed;
+          if (player.x < 360) player.x += movementSpeed;
       }
 
       // Add touch-based continuous movement for mobile controls
@@ -210,7 +232,21 @@
       // Draw the cheeses and check if player catches them
       function drawCheeses() {
           cheeses.forEach(cheese => {
-              ctx.fillStyle = cheese.type === 'cheddar' ? 'yellow' : (cheese.type === 'brie' ? 'white' : 'blue');
+              if (cheese.type === 'cheddar') {
+                  ctx.fillStyle = 'yellow';
+              } else if (cheese.type === 'brie') {
+                  ctx.fillStyle = 'white';
+              } else if (cheese.type === 'blue') {
+                  ctx.fillStyle = 'blue';
+              } else if (cheese.type === 'bomb') {
+                  ctx.fillStyle = 'red'; // Bomb cheese
+                  cheese.x += cheese.direction * 1.5; // Swerving movement for the bomb cheese
+              } else if (cheese.type === 'mystery') {
+                  ctx.fillStyle = 'purple'; // Mystery cheese
+              } else if (cheese.type === 'ultra') {
+                  ctx.fillStyle = 'gold'; // Ultra rare cheese
+              }
+
               ctx.fillRect(cheese.x, cheese.y, cheese.width, cheese.height);
               cheese.y += cheese.speed;
 
@@ -226,8 +262,18 @@
                   cheese.y < player.y + player.height &&
                   cheese.y + cheese.height > player.y
               ) {
+                  // Player catches the cheese
+                  if (cheese.type === 'bomb') {
+                      score -= 50; // Deduct points for bomb cheese
+                  } else if (cheese.type === 'mystery') {
+                      score += Math.floor(Math.random() * 81) - 20; // Random points between -20 and 60
+                  } else if (cheese.type === 'ultra') {
+                      score += 150; // Add 150 points for ultra rare cheese
+                  } else {
+                      score += (cheese.type === 'cheddar' ? 10 : (cheese.type === 'brie' ? 20 : 30)); // Add points for regular cheeses
+                  }
+
                   cheeses = cheeses.filter(c => c !== cheese); // Remove caught cheese
-                  score += (cheese.type === 'cheddar' ? 10 : (cheese.type === 'brie' ? 20 : 30)); // Add points
                   updateScore();
               }
           });
@@ -240,13 +286,11 @@
 
       // Main game loop
       function updateGame() {
-          ctx.clearRect(0, 0, canvas.width, canvas.height);
-          drawPlayer();
-          drawCheeses();
+          ctx.clearRect(0, 0, canvas.width, canvas.height); // Clear the canvas
+          drawPlayer(); // Draw the player
+          drawCheeses(); // Draw the cheeses
       }
 
-      // Add keyboard controls (arrow keys)
-      document.addEvent
       // Add keyboard controls (arrow keys)
       document.addEventListener('keydown', (e) => {
           if (e.key === 'ArrowLeft') moveLeft();
