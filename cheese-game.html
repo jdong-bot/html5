@@ -73,7 +73,7 @@
     <script type="module">
       // Import Firebase
       import { initializeApp } from "https://www.gstatic.com/firebasejs/10.13.1/firebase-app.js";
-      import { getDatabase, ref, set, get, push } from "https://www.gstatic.com/firebasejs/10.13.1/firebase-database.js";
+      import { getDatabase, ref, set, get, onValue, push } from "https://www.gstatic.com/firebasejs/10.13.1/firebase-database.js";
 
       // Firebase configuration
       const firebaseConfig = {
@@ -100,10 +100,10 @@
         });
       }
 
-      // Display leaderboard from Firebase
+      // Display leaderboard from Firebase in real-time
       function displayLeaderboard() {
         const leaderboardRef = ref(database, 'leaderboard');
-        get(leaderboardRef).then((snapshot) => {
+        onValue(leaderboardRef, (snapshot) => {
           if (snapshot.exists()) {
             const leaderboardData = snapshot.val();
             const leaderboardEntries = document.getElementById('leaderboardEntries');
@@ -153,7 +153,6 @@
           document.getElementById('time').innerText = "Time's up!";
           const playerName = prompt("Enter your name:", "Player");
           saveScore(playerName, score);
-          displayLeaderboard();
       }
 
       // Spawn a new cheese randomly
@@ -235,8 +234,9 @@
           if (e.key === 'ArrowRight') moveRight();
       });
 
-      // Start the game
+      // Start the game and leaderboard fetching
       startGame();
+      displayLeaderboard();
     </script>
 
 </body>
