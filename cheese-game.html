@@ -9,6 +9,11 @@
             font-family: Arial, sans-serif;
             text-align: center;
             background-color: #f0f0f0;
+            -webkit-user-select: none; /* Disable text selection on iOS */
+            -moz-user-select: none; /* Disable text selection on Firefox */
+            -ms-user-select: none; /* Disable text selection on IE */
+            user-select: none; /* Disable text selection on all browsers */
+            touch-action: manipulation; /* Prevent gestures like pinch zoom */
         }
 
         #gameCanvas {
@@ -34,7 +39,6 @@
         /* Mobile-friendly controls */
         #controls {
             margin-top: 20px;
-            user-select: none; /* Prevent highlighting on mobile */
         }
 
         .control-button {
@@ -186,7 +190,8 @@
               height: cheeseType === 'mystery' ? 30 : 40,
               type: cheeseType,
               speed: 2 + Math.random() * 2,  // Cheese falls at different speeds
-              direction: Math.random() < 0.5 ? -1 : 1  // Used for bomb cheese's curve direction
+              directionX: Math.random() < 0.5 ? -1 : 1,  // Horizontal direction for the bomb cheese
+              directionY: 1, // Vertical direction for all cheese
           };
 
           cheeses.push(newCheese);
@@ -207,100 +212,114 @@
       }
 
       // Add touch-based continuous movement for mobile controls
-      document.getElementById("leftButton").addEventListener("touchstart", () => {
-          moveLeftInterval = setInterval(moveLeft, 20);
-      });
+document.getElementById("leftButton").addEventListener("touchstart", () => {
+    moveLeftInterval = setInterval(moveLeft, 20);
+});
 
-      document.getElementById("leftButton").addEventListener("touchend", () => {
-          clearInterval(moveLeftInterval);
-      });
+document.getElementById("leftButton").addEventListener("touchend", () => {
+    clearInterval(moveLeftInterval);
+});
 
-      document.getElementById("rightButton").addEventListener("touchstart", () => {
-          moveRightInterval = setInterval(moveRight, 20);
-      });
+document.getElementById("rightButton").addEventListener("touchstart", () => {
+    moveRightInterval = setInterval(moveRight, 20);
+});
 
-      document.getElementById("rightButton").addEventListener("touchend", () => {
-          clearInterval(moveRightInterval);
-      });
+document.getElementById("rightButton").addEventListener("touchend", () => {
+    clearInterval(moveRightInterval);
+});
 
-      // Draw the player
-      function drawPlayer() {
-          ctx.fillStyle = '#ffa500';
-          ctx.fillRect(player.x, player.y, player.width, player.height);
-      }
+// Draw the player
+function drawPlayer() {
+    ctx.fillStyle = '#ffa500';
+    ctx.fillRect(player.x, player.y, player.width, player.height);
+}
 
-      // Draw the cheeses and check if player catches them
-      function drawCheeses() {
-          cheeses.forEach(cheese => {
-              if (cheese.type === 'cheddar') {
-                  ctx.fillStyle = 'yellow';
-              } else if (cheese.type === 'brie') {
-                  ctx.fillStyle = 'white';
-              } else if (cheese.type === 'blue') {
-                  ctx.fillStyle = 'blue';
-              } else if (cheese.type === 'bomb') {
-                  ctx.fillStyle = 'red'; // Bomb cheese
-                  cheese.x += cheese.direction * 1.5; // Swerving movement for the bomb cheese
-              } else if (cheese.type === 'mystery') {
-                  ctx.fillStyle = 'purple'; // Mystery cheese
-              } else if (cheese.type === 'ultra') {
-                  ctx.fillStyle = 'gold'; // Ultra rare cheese
-              }
+// Update cheese logic, including bouncing bomb cheese
+function drawCheeses() {
+    cheeses.forEach(cheese => {
+        if (cheese.type === 'cheddar') {
+            ctx.fillStyle = 'yellow';
+        } else if (cheese.type === 'brie') {
+            ctx.fillStyle = 'white';
+        } else if (cheese.type === 'blue') {
+            ctx.fillStyle = 'blue';
+        } else if (cheese.type === 'bomb') {
+            ctx.fillStyle = 'red';  // Bomb cheese
+            cheese.x += cheese.directionX * 1.5;  // Add horizontal movement for bomb cheese
+            // Make bomb cheese bounce when it hits the edges
+            if (cheese.x <= 0 || cheese.x + cheese.width >= canvas.width) {
+                cheese.directionX *= -1;  // Reverse direction when it hits left/right bounds
+            }
+        } else if (cheese.type === 'mystery') {
+            ctx.fillStyle = 'purple';  // Mystery cheese
+        } else if (cheese.type === 'ultra') {
+            ctx.fillStyle = 'gold';  // Ultra rare cheese
+        }
 
-              ctx.fillRect(cheese.x, cheese.y, cheese.width, cheese.height);
-              cheese.y += cheese.speed;
+        ctx.fillRect(cheese.x, cheese.y, cheese.width, cheese.height);
+        cheese.y += cheese.speed;
 
-              // Remove cheese if it falls to the bottom
-              if (cheese.y > canvas.height) {
-                  cheeses = cheeses.filter(c => c !== cheese);
-              }
+        // Remove cheese if it falls to the bottom
+        if (cheese.y > canvas.height) {
+            cheeses = cheeses.filter(c => c !== cheese);
+        }
 
-              // Check if player catches the cheese
-              if (
-                  cheese.x < player.x + player.width &&
-                  cheese.x + cheese.width > player.x &&
-                  cheese.y < player.y + player.height &&
-                  cheese.y + cheese.height > player.y
-              ) {
-                  // Player catches the cheese
-                  if (cheese.type === 'bomb') {
-                      score -= 50; // Deduct points for bomb cheese
-                  } else if (cheese.type === 'mystery') {
-                      score += Math.floor(Math.random() * 81) - 20; // Random points between -20 and 60
-                  } else if (cheese.type === 'ultra') {
-                      score += 150; // Add 150 points for ultra rare cheese
-                  } else {
-                      score += (cheese.type === 'cheddar' ? 10 : (cheese.type === 'brie' ? 20 : 30)); // Add points for regular cheeses
-                  }
+        // Check if player catches the cheese
+        if (
+            cheese.x < player.x + player.width &&
+            cheese.x + cheese.width > player.x &&
+            cheese.y < player.y + player.height &&
+            cheese.y + cheese.height > player.y
+        ) {
+            // Player catches the cheese
+            if (cheese.type === 'bomb') {
+                score -= 50;  // Deduct points for bomb cheese
+            } else if (cheese.type === 'mystery') {
+                score += Math.floor(Math.random() * 81) - 20;  // Random points between -20 and 60
+            } else if (cheese.type === 'ultra') {
+                score += 150;  // Add 150 points for ultra rare cheese
+            } else {
+                score += (cheese.type === 'cheddar' ? 10 : (cheese.type === 'brie' ? 20 : 30));  // Add points for regular cheeses
+            }
 
-                  cheeses = cheeses.filter(c => c !== cheese); // Remove caught cheese
-                  updateScore();
-              }
-          });
-      }
+            cheeses = cheeses.filter(c => c !== cheese);  // Remove caught cheese
+            updateScore();
+        }
+    });
+}
 
-      // Update the score display
-      function updateScore() {
-          document.getElementById('score').innerText = `Score: ${score}`;
-      }
+// Update the score display
+function updateScore() {
+    document.getElementById('score').innerText = `Score: ${score}`;
+}
 
-      // Main game loop
-      function updateGame() {
-          ctx.clearRect(0, 0, canvas.width, canvas.height); // Clear the canvas
-          drawPlayer(); // Draw the player
-          drawCheeses(); // Draw the cheeses
-      }
+// Main game loop
+function updateGame() {
+    ctx.clearRect(0, 0, canvas.width, canvas.height);  // Clear the canvas
+    drawPlayer();  // Draw the player
+    drawCheeses();  // Draw the cheeses
+}
 
-      // Add keyboard controls (arrow keys)
-      document.addEventListener('keydown', (e) => {
-          if (e.key === 'ArrowLeft') moveLeft();
-          if (e.key === 'ArrowRight') moveRight();
-      });
+// Add keyboard controls (arrow keys)
+document.addEventListener('keydown', (e) => {
+    if (e.key === 'ArrowLeft') moveLeft();
+    if (e.key === 'ArrowRight') moveRight();
+});
 
-      // Start the game and leaderboard fetching
-      startGame();
-      displayLeaderboard();
-    </script>
+// Disable double-tap zoom on mobile
+let lastTouchEnd = 0;
+document.addEventListener('touchend', function(event) {
+    const now = (new Date()).getTime();
+    if (now - lastTouchEnd <= 300) {
+        event.preventDefault();
+    }
+    lastTouchEnd = now;
+}, false);
+
+// Start the game and leaderboard fetching
+startGame();
+displayLeaderboard();
+</script>
 
 </body>
 </html>
