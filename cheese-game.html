@@ -69,6 +69,57 @@
         <div id="leaderboardEntries"></div>
     </div>
 
+    <!-- Firebase SDK -->
+    <script type="module">
+        // Import Firebase SDK
+        import { initializeApp } from "https://www.gstatic.com/firebasejs/10.13.1/firebase-app.js";
+        import { getDatabase, ref, set, get, push } from "https://www.gstatic.com/firebasejs/10.13.1/firebase-database.js";
+
+        // Your Firebase config (update this with your own details)
+        const firebaseConfig = {
+            apiKey: "YOUR_API_KEY",
+            authDomain: "YOUR_PROJECT_ID.firebaseapp.com",
+            databaseURL: "https://YOUR_PROJECT_ID.firebaseio.com",
+            projectId: "YOUR_PROJECT_ID",
+            storageBucket: "YOUR_PROJECT_ID.appspot.com",
+            messagingSenderId: "YOUR_MESSAGING_SENDER_ID",
+            appId: "YOUR_APP_ID"
+        };
+
+        // Initialize Firebase
+        const app = initializeApp(firebaseConfig);
+        const database = getDatabase(app);
+
+        // Function to save score to Firebase
+        function saveScore(playerName, score) {
+            const leaderboardRef = ref(database, 'leaderboard');
+            const newScoreKey = push(leaderboardRef).key;
+            set(ref(database, `leaderboard/${newScoreKey}`), {
+                name: playerName,
+                score: score
+            });
+        }
+
+        // Function to display the leaderboard from Firebase
+        function displayLeaderboard() {
+            const leaderboardRef = ref(database, 'leaderboard');
+            get(leaderboardRef).then((snapshot) => {
+                if (snapshot.exists()) {
+                    const leaderboardData = snapshot.val();
+                    const sortedEntries = Object.values(leaderboardData).sort((a, b) => b.score - a.score);
+                    const leaderboardEntries = document.getElementById('leaderboardEntries');
+                    leaderboardEntries.innerHTML = '';
+                    sortedEntries.forEach((entry, index) => {
+                        leaderboardEntries.innerHTML += `<p>${index + 1}. ${entry.name} - ${entry.score} points</p>`;
+                    });
+                }
+            });
+        }
+
+        // Call displayLeaderboard on page load
+        window.onload = displayLeaderboard;
+    </script>
+
     <script>
         const canvas = document.getElementById('gameCanvas');
         const ctx = canvas.getContext('2d');
@@ -102,27 +153,9 @@
             clearInterval(gameInterval);
             clearInterval(timerInterval);
             document.getElementById('time').innerText = "Time's up!";
-            saveScore();
-            displayLeaderboard();
-        }
-
-        // Save the current score to the leaderboard
-        function saveScore() {
             const playerName = prompt("Enter your name:", "Player");
-            leaderboard.push({ name: playerName, score });
-            leaderboard.sort((a, b) => b.score - a.score); // Sort by score descending
-        }
-
-        // Display the leaderboard on the page
-        function displayLeaderboard() {
-            const leaderboardEntries = document.getElementById('leaderboardEntries');
-            leaderboardEntries.innerHTML = "";
-            leaderboard.forEach((entry, index) => {
-                const entryDiv = document.createElement('div');
-                entryDiv.classList.add('leaderboard-entry');
-                entryDiv.innerText = `${index + 1}. ${entry.name} - ${entry.score} points`;
-                leaderboardEntries.appendChild(entryDiv);
-            });
+            saveScore(playerName, score); // Save score to Firebase
+            displayLeaderboard(); // Update leaderboard after saving
         }
 
         // Spawn a new cheese randomly
