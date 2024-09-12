@@ -60,8 +60,8 @@
 
     <!-- Mobile-friendly Controls -->
     <div id="controls">
-        <button class="control-button" onclick="moveLeft()">Left</button>
-        <button class="control-button" onclick="moveRight()">Right</button>
+        <button class="control-button" id="leftButton">Left</button>
+        <button class="control-button" id="rightButton">Right</button>
     </div>
 
     <div id="leaderboard">
@@ -69,7 +69,6 @@
         <div id="leaderboardEntries"></div>
     </div>
 
-    <!-- Firebase SDK and Leaderboard Configuration -->
     <script type="module">
       // Import Firebase
       import { initializeApp } from "https://www.gstatic.com/firebasejs/10.13.1/firebase-app.js";
@@ -128,6 +127,7 @@
       let timeLeft = 60; // Time left in seconds
       let gameInterval, timerInterval;
       let leaderboard = [];
+      let moveLeftInterval, moveRightInterval;
 
       // Start the game and timer
       function startGame() {
@@ -184,6 +184,23 @@
           if (player.x < 360) player.x += player.speed;
       }
 
+      // Add touch-based continuous movement for mobile controls
+      document.getElementById("leftButton").addEventListener("touchstart", () => {
+          moveLeftInterval = setInterval(moveLeft, 20);
+      });
+
+      document.getElementById("leftButton").addEventListener("touchend", () => {
+          clearInterval(moveLeftInterval);
+      });
+
+      document.getElementById("rightButton").addEventListener("touchstart", () => {
+          moveRightInterval = setInterval(moveRight, 20);
+      });
+
+      document.getElementById("rightButton").addEventListener("touchend", () => {
+          clearInterval(moveRightInterval);
+      });
+
       // Draw the player
       function drawPlayer() {
           ctx.fillStyle = '#ffa500';
@@ -228,6 +245,8 @@
           drawCheeses();
       }
 
+      // Add keyboard controls (arrow keys)
+      document.addEvent
       // Add keyboard controls (arrow keys)
       document.addEventListener('keydown', (e) => {
           if (e.key === 'ArrowLeft') moveLeft();
