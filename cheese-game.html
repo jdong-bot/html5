@@ -69,176 +69,174 @@
         <div id="leaderboardEntries"></div>
     </div>
 
-    <!-- Firebase SDK -->
+    <!-- Firebase SDK and Leaderboard Configuration -->
     <script type="module">
-        // Import Firebase SDK
-        import { initializeApp } from "https://www.gstatic.com/firebasejs/10.13.1/firebase-app.js";
-        import { getDatabase, ref, set, get, push } from "https://www.gstatic.com/firebasejs/10.13.1/firebase-database.js";
+      // Import Firebase
+      import { initializeApp } from "https://www.gstatic.com/firebasejs/10.13.1/firebase-app.js";
+      import { getDatabase, ref, set, get, push } from "https://www.gstatic.com/firebasejs/10.13.1/firebase-database.js";
 
-        // Your Firebase config (update this with your own details)
-        const firebaseConfig = {
-            apiKey: "YOUR_API_KEY",
-            authDomain: "YOUR_PROJECT_ID.firebaseapp.com",
-            databaseURL: "https://YOUR_PROJECT_ID.firebaseio.com",
-            projectId: "YOUR_PROJECT_ID",
-            storageBucket: "YOUR_PROJECT_ID.appspot.com",
-            messagingSenderId: "YOUR_MESSAGING_SENDER_ID",
-            appId: "YOUR_APP_ID"
-        };
+      // Firebase configuration
+      const firebaseConfig = {
+        apiKey: "AIzaSyDWW3pMDLp-5YWtUxQFcF67A-i88_gpGXg",
+        authDomain: "cheese-d1e63.firebaseapp.com",
+        databaseURL: "https://cheese-d1e63-default-rtdb.firebaseio.com",
+        projectId: "cheese-d1e63",
+        storageBucket: "cheese-d1e63.appspot.com",
+        messagingSenderId: "851448295332",
+        appId: "1:851448295332:web:e6cb5935e5c9aadb479b31"
+      };
 
-        // Initialize Firebase
-        const app = initializeApp(firebaseConfig);
-        const database = getDatabase(app);
+      // Initialize Firebase
+      const app = initializeApp(firebaseConfig);
+      const database = getDatabase(app);
 
-        // Function to save score to Firebase
-        function saveScore(playerName, score) {
-            const leaderboardRef = ref(database, 'leaderboard');
-            const newScoreKey = push(leaderboardRef).key;
-            set(ref(database, `leaderboard/${newScoreKey}`), {
-                name: playerName,
-                score: score
-            });
-        }
-
-        // Function to display the leaderboard from Firebase
-        function displayLeaderboard() {
-            const leaderboardRef = ref(database, 'leaderboard');
-            get(leaderboardRef).then((snapshot) => {
-                if (snapshot.exists()) {
-                    const leaderboardData = snapshot.val();
-                    const sortedEntries = Object.values(leaderboardData).sort((a, b) => b.score - a.score);
-                    const leaderboardEntries = document.getElementById('leaderboardEntries');
-                    leaderboardEntries.innerHTML = '';
-                    sortedEntries.forEach((entry, index) => {
-                        leaderboardEntries.innerHTML += `<p>${index + 1}. ${entry.name} - ${entry.score} points</p>`;
-                    });
-                }
-            });
-        }
-
-        // Call displayLeaderboard on page load
-        window.onload = displayLeaderboard;
-    </script>
-
-    <script>
-        const canvas = document.getElementById('gameCanvas');
-        const ctx = canvas.getContext('2d');
-
-        let player = { x: 180, y: 550, width: 40, height: 40, speed: 5 };
-        let cheeses = [];
-        let score = 0;
-        let timeLeft = 60; // Time left in seconds
-        let gameInterval, timerInterval;
-        let leaderboard = [];
-
-        // Start the game and timer
-        function startGame() {
-            gameInterval = setInterval(updateGame, 20);
-            timerInterval = setInterval(updateTimer, 1000); // Update timer every second
-            spawnCheese();
-        }
-
-        // Timer update function
-        function updateTimer() {
-            if (timeLeft > 0) {
-                timeLeft--;
-                document.getElementById('time').innerText = `Time Left: ${timeLeft}s`;
-            } else {
-                endGame();
-            }
-        }
-
-        // End the game when time runs out
-        function endGame() {
-            clearInterval(gameInterval);
-            clearInterval(timerInterval);
-            document.getElementById('time').innerText = "Time's up!";
-            const playerName = prompt("Enter your name:", "Player");
-            saveScore(playerName, score); // Save score to Firebase
-            displayLeaderboard(); // Update leaderboard after saving
-        }
-
-        // Spawn a new cheese randomly
-        function spawnCheese() {
-            const cheeseTypes = ['cheddar', 'brie', 'blue'];
-            const cheeseType = cheeseTypes[Math.floor(Math.random() * cheeseTypes.length)];
-
-            cheeses.push({
-                x: Math.random() * 360,
-                y: 0,
-                width: 40,
-                height: 40,
-                type: cheeseType,
-                speed: 2 + Math.random() * 2 // Cheese falls at different speeds
-            });
-
-            if (timeLeft > 0) {
-                setTimeout(spawnCheese, Math.random() * 2000);
-            }
-        }
-
-        // Move player left
-        function moveLeft() {
-            if (player.x > 0) player.x -= player.speed;
-        }
-
-        // Move player right
-        function moveRight() {
-            if (player.x < 360) player.x += player.speed;
-        }
-
-        // Draw the player
-        function drawPlayer() {
-            ctx.fillStyle = '#ffa500';
-            ctx.fillRect(player.x, player.y, player.width, player.height);
-        }
-
-        // Draw the cheeses and check if player catches them
-        function drawCheeses() {
-            cheeses.forEach(cheese => {
-                ctx.fillStyle = cheese.type === 'cheddar' ? 'yellow' : (cheese.type === 'brie' ? 'white' : 'blue');
-                ctx.fillRect(cheese.x, cheese.y, cheese.width, cheese.height);
-                cheese.y += cheese.speed;
-
-                // Remove cheese if it falls to the bottom
-                if (cheese.y > canvas.height) {
-                    cheeses = cheeses.filter(c => c !== cheese);
-                }
-
-                // Check if player catches the cheese
-                if (
-                    cheese.x < player.x + player.width &&
-                    cheese.x + cheese.width > player.x &&
-                    cheese.y < player.y + player.height &&
-                    cheese.y + cheese.height > player.y
-                ) {
-                    cheeses = cheeses.filter(c => c !== cheese); // Remove caught cheese
-                    score += (cheese.type === 'cheddar' ? 10 : (cheese.type === 'brie' ? 20 : 30)); // Add points
-                    updateScore();
-                }
-            });
-        }
-
-        // Update the score display
-        function updateScore() {
-            document.getElementById('score').innerText = `Score: ${score}`;
-        }
-
-        // Main game loop
-        function updateGame() {
-            ctx.clearRect(0, 0, canvas.width, canvas.height);
-            drawPlayer();
-            drawCheeses();
-        }
-
-        // Add keyboard controls (arrow keys)
-        document.addEventListener('keydown', (e) => {
-            if (e.key === 'ArrowLeft') moveLeft();
-            if (e.key === 'ArrowRight') moveRight();
+      // Save score to Firebase
+      function saveScore(playerName, score) {
+        const leaderboardRef = ref(database, 'leaderboard');
+        const newScoreKey = push(leaderboardRef).key;
+        set(ref(database, `leaderboard/${newScoreKey}`), {
+          name: playerName,
+          score: score
         });
+      }
 
-        // Start the game
-        startGame();
+      // Display leaderboard from Firebase
+      function displayLeaderboard() {
+        const leaderboardRef = ref(database, 'leaderboard');
+        get(leaderboardRef).then((snapshot) => {
+          if (snapshot.exists()) {
+            const leaderboardData = snapshot.val();
+            const leaderboardEntries = document.getElementById('leaderboardEntries');
+            leaderboardEntries.innerHTML = "";  // Clear previous leaderboard entries
+            Object.values(leaderboardData).sort((a, b) => b.score - a.score).forEach((entry, index) => {
+              const entryDiv = document.createElement('div');
+              entryDiv.classList.add('leaderboard-entry');
+              entryDiv.innerText = `${index + 1}. ${entry.name} - ${entry.score} points`;
+              leaderboardEntries.appendChild(entryDiv);
+            });
+          }
+        });
+      }
+
+      // Game logic
+      const canvas = document.getElementById('gameCanvas');
+      const ctx = canvas.getContext('2d');
+
+      let player = { x: 180, y: 550, width: 40, height: 40, speed: 5 };
+      let cheeses = [];
+      let score = 0;
+      let timeLeft = 60; // Time left in seconds
+      let gameInterval, timerInterval;
+      let leaderboard = [];
+
+      // Start the game and timer
+      function startGame() {
+          gameInterval = setInterval(updateGame, 20);
+          timerInterval = setInterval(updateTimer, 1000); // Update timer every second
+          spawnCheese();
+      }
+
+      // Timer update function
+      function updateTimer() {
+          if (timeLeft > 0) {
+              timeLeft--;
+              document.getElementById('time').innerText = `Time Left: ${timeLeft}s`;
+          } else {
+              endGame();
+          }
+      }
+
+      // End the game when time runs out
+      function endGame() {
+          clearInterval(gameInterval);
+          clearInterval(timerInterval);
+          document.getElementById('time').innerText = "Time's up!";
+          const playerName = prompt("Enter your name:", "Player");
+          saveScore(playerName, score);
+          displayLeaderboard();
+      }
+
+      // Spawn a new cheese randomly
+      function spawnCheese() {
+          const cheeseTypes = ['cheddar', 'brie', 'blue'];
+          const cheeseType = cheeseTypes[Math.floor(Math.random() * cheeseTypes.length)];
+
+          cheeses.push({
+              x: Math.random() * 360,
+              y: 0,
+              width: 40,
+              height: 40,
+              type: cheeseType,
+              speed: 2 + Math.random() * 2 // Cheese falls at different speeds
+          });
+
+          if (timeLeft > 0) {
+              setTimeout(spawnCheese, Math.random() * 2000);
+          }
+      }
+
+      // Move player left
+      function moveLeft() {
+          if (player.x > 0) player.x -= player.speed;
+      }
+
+      // Move player right
+      function moveRight() {
+          if (player.x < 360) player.x += player.speed;
+      }
+
+      // Draw the player
+      function drawPlayer() {
+          ctx.fillStyle = '#ffa500';
+          ctx.fillRect(player.x, player.y, player.width, player.height);
+      }
+
+      // Draw the cheeses and check if player catches them
+      function drawCheeses() {
+          cheeses.forEach(cheese => {
+              ctx.fillStyle = cheese.type === 'cheddar' ? 'yellow' : (cheese.type === 'brie' ? 'white' : 'blue');
+              ctx.fillRect(cheese.x, cheese.y, cheese.width, cheese.height);
+              cheese.y += cheese.speed;
+
+              // Remove cheese if it falls to the bottom
+              if (cheese.y > canvas.height) {
+                  cheeses = cheeses.filter(c => c !== cheese);
+              }
+
+              // Check if player catches the cheese
+              if (
+                  cheese.x < player.x + player.width &&
+                  cheese.x + cheese.width > player.x &&
+                  cheese.y < player.y + player.height &&
+                  cheese.y + cheese.height > player.y
+              ) {
+                  cheeses = cheeses.filter(c => c !== cheese); // Remove caught cheese
+                  score += (cheese.type === 'cheddar' ? 10 : (cheese.type === 'brie' ? 20 : 30)); // Add points
+                  updateScore();
+              }
+          });
+      }
+
+      // Update the score display
+      function updateScore() {
+          document.getElementById('score').innerText = `Score: ${score}`;
+      }
+
+      // Main game loop
+      function updateGame() {
+          ctx.clearRect(0, 0, canvas.width, canvas.height);
+          drawPlayer();
+          drawCheeses();
+      }
+
+      // Add keyboard controls (arrow keys)
+      document.addEventListener('keydown', (e) => {
+          if (e.key === 'ArrowLeft') moveLeft();
+          if (e.key === 'ArrowRight') moveRight();
+      });
+
+      // Start the game
+      startGame();
     </script>
 
 </body>
